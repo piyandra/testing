@@ -12,8 +12,10 @@ services:
     ports:
       - 5432:5432
 
+
   bot:
     build: .
+    command: bash start.sh
     depends_on:
       - db
 
