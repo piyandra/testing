@@ -1,19 +1,21 @@
+import requests
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, CallbackContext, ApplicationBuilder
 import psycopg2
 from psycopg2 import sql
 
 # Replace with your bot token
-TOKEN = 'YOUR_BOT_TOKEN'
+TOKEN = '6459247934:AAFSllqletBf9sdYB91NXzldQCiw9qG-B7I'
+ip = requests.get('https://ipinfo.io/json').json()['ip']
 
 
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Welcome! Use /create_db <dbname> <user> <password> to create a new database.')
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Welcome! Use /create_db <dbname> <user> <password> to create a new database.')
 
 
-def create_db(update: Update, context: CallbackContext) -> None:
+async def create_db(update: Update, context: CallbackContext) -> None:
     if len(context.args) != 3:
-        update.message.reply_text('Usage: /create_db <dbname> <user> <password>')
+        await update.message.reply_text('Usage: /create_db <dbname> <user> <password>')
         return
 
     dbname, dbuser, dbpass = context.args
@@ -37,10 +39,11 @@ def create_db(update: Update, context: CallbackContext) -> None:
         cursor.execute(
             sql.SQL("GRANT ALL PRIVILEGES ON DATABASE {} TO {}").format(sql.Identifier(dbname), sql.Identifier(dbuser)))
 
-        update.message.reply_text(f'Database {dbname} and user {dbuser} created successfully!')
+        await update.message.reply_text(f'Database {dbname} dan user {dbuser} berhasil dibuat!')
+        await update.message.reply_text(f'Connection String \n<code>postgres://{dbuser}:{dbpass}@{ip}:5432/{dbname}</code>', parse_mode="HTML")
 
     except Exception as e:
-        update.message.reply_text(f'An error occurred: {e}')
+        await update.message.reply_text(f'An error occurred: {e}')
     finally:
         if cursor:
             cursor.close()
@@ -48,16 +51,12 @@ def create_db(update: Update, context: CallbackContext) -> None:
             connection.close()
 
 
-def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("create_db", create_db))
-
-    updater.start_polling()
-    updater.idle()
-
 
 if __name__ == '__main__':
-    main()
+    application = ApplicationBuilder().token(TOKEN).build()
+
+    start_handler = CommandHandler('start', start)
+    db_handler = CommandHandler('create_db', create_db)
+    application.add_handler(start_handler)
+    application.add_handler(db_handler)
+    application.run_polling()
